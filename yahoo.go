@@ -20,7 +20,6 @@
 
 // Package yahoo defines the implementation of a stock quote driver
 // to be used in package quote
-
 package yahoo
 
 import (
@@ -41,18 +40,19 @@ import (
 
 const endpoint = "https://query.yahooapis.com/v1/public/yql"
 
-type YahooDriver struct{}
+type yahooDriver struct{}
 
 func init() {
-	quote.Register("yahoo", &YahooDriver{})
+	quote.Register("yahoo", &yahooDriver{})
 }
 
-func (d *YahooDriver) Open(name string) (driver.Handle, error) {
+// Open implements the driver required open function
+func (d *yahooDriver) Open(name string) (driver.Handle, error) {
 	// ignores name for now
-	return &YahooHandle{h: http.DefaultClient, name: name}, nil
+	return &yahooHandle{h: http.DefaultClient, name: name}, nil
 }
 
-type YahooHandle struct {
+type yahooHandle struct {
 	h    *http.Client
 	name string
 }
@@ -75,12 +75,12 @@ func yahooQueryString(tickers []string) string {
 	return "select * from yahoo.finance.quotes where symbol in " + listOfTickers
 }
 
-type YahooQuoteItem struct {
+type yahooQuoteItem struct {
 	Symbol             string
 	LastTradePriceOnly string
 }
 
-type YahooQueryResult struct {
+type yahooQueryResult struct {
 	Query struct {
 		Count   int `json:"count"`
 		Results struct {
@@ -89,8 +89,9 @@ type YahooQueryResult struct {
 	}
 }
 
-func (h *YahooHandle) Retrieve(tickers []string) (q []driver.StockQuote, err error) {
-	baseUrl, err := url.Parse(endpoint)
+// Implements the driver required Retrieve function for actually getting stock quote data
+func (h *yahooHandle) Retrieve(tickers []string) (q []driver.StockQuote, err error) {
+	baseURL, err := url.Parse(endpoint)
 	if err != nil {
 		return
 	}
@@ -100,15 +101,15 @@ func (h *YahooHandle) Retrieve(tickers []string) (q []driver.StockQuote, err err
 	params.Add("env", "store://datatables.org/alltableswithkeys")
 	params.Add("q", yahooQueryString(tickers))
 
-	baseUrl.RawQuery = params.Encode()
-	res, err := http.Get(baseUrl.String())
+	baseURL.RawQuery = params.Encode()
+	res, err := http.Get(baseURL.String())
 
 	if err != nil {
 		return
 	}
 	defer res.Body.Close()
 
-	var m YahooQueryResult
+	var m yahooQueryResult
 
 	err = json.NewDecoder(res.Body).Decode(&m)
 	if err != nil {
@@ -119,10 +120,10 @@ func (h *YahooHandle) Retrieve(tickers []string) (q []driver.StockQuote, err err
 		return
 	}
 
-	quotes := []YahooQuoteItem{}
+	quotes := []yahooQuoteItem{}
 
 	if m.Query.Count == 1 {
-		var aq YahooQuoteItem
+		var aq yahooQuoteItem
 		err = json.Unmarshal(m.Query.Results.Quote, &aq)
 
 		if err != nil {
